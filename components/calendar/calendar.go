@@ -3,7 +3,7 @@ package calendar
 import (
 	"time"
 
-	"speedtestui/components/config"
+	"taskman/components/config"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"

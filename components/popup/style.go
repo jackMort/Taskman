@@ -1,7 +1,7 @@
 package popup
 
 import (
-	"speedtestui/components/config"
+	"taskman/components/config"
 
 	"github.com/charmbracelet/lipgloss"
 )

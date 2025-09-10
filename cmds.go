@@ -3,10 +3,10 @@ package main
 import (
 	"fmt"
 	"os"
-	"speedtestui/components/calendar"
-	"speedtestui/components/config"
-	"speedtestui/components/footer"
-	"speedtestui/components/results"
+	"taskman/components/calendar"
+	"taskman/components/config"
+	"taskman/components/footer"
+	"taskman/components/results"
 
 	tea "github.com/charmbracelet/bubbletea"
 	zone "github.com/lrstanley/bubblezone"
@@ -29,12 +29,12 @@ Restman is a CLI tool for RESTful API.`,
 	Version: version,
 	Run: func(cmd *cobra.Command, args []string) {
 		config.SetVersion(version)
-		viper.SetConfigName("config")             // name of config file (without extension)
-		viper.SetConfigType("json")               // REQUIRED if the config file does not have the extension in the name
-		viper.AddConfigPath("/etc/speedtestui/")  // path to look for the config file in
-		viper.AddConfigPath("$HOME/.speedtestui") // call multiple times to add many search paths
-		err := viper.ReadInConfig()               // Find and read the config file
-		if err != nil {                           // Handle errors reading the config file
+		viper.SetConfigName("config")         // name of config file (without extension)
+		viper.SetConfigType("json")           // REQUIRED if the config file does not have the extension in the name
+		viper.AddConfigPath("/etc/taskman/")  // path to look for the config file in
+		viper.AddConfigPath("$HOME/.taskman") // call multiple times to add many search paths
+		err := viper.ReadInConfig()           // Find and read the config file
+		if err != nil {                       // Handle errors reading the config file
 			if _, ok := err.(viper.ConfigFileNotFoundError); ok {
 				// NOTE: ignore if config file is not found
 			} else {

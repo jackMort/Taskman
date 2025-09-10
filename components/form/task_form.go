@@ -1,10 +1,10 @@
 package form
 
 import (
-	"speedtestui/app"
-	"speedtestui/components/config"
-	"speedtestui/components/overlay"
-	"speedtestui/utils"
+	"taskman/app"
+	"taskman/components/config"
+	"taskman/components/overlay"
+	"taskman/utils"
 
 	"github.com/charmbracelet/bubbles/textarea"
 	"github.com/charmbracelet/bubbles/textinput"

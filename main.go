@@ -1,11 +1,11 @@
 package main
 
 import (
-	"speedtestui/app"
-	"speedtestui/components/config"
-	"speedtestui/components/form"
-	"speedtestui/components/popup"
-	"speedtestui/utils"
+	"taskman/app"
+	"taskman/components/config"
+	"taskman/components/form"
+	"taskman/components/popup"
+	"taskman/utils"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
@@ -139,7 +139,7 @@ func (m Model) View() string {
 			Render(
 				lipgloss.JoinVertical(
 					lipgloss.Left,
-					config.BoxHeader.Render("SpeedtesTUI "+version),
+					config.BoxHeader.Render("Taskman "+version),
 					"Please resize the window to at least 140x30"),
 			)
 	}

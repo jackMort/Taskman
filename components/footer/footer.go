@@ -1,7 +1,7 @@
 package footer
 
 import (
-	"speedtestui/components/config"
+	"taskman/components/config"
 
 	"github.com/charmbracelet/bubbles/help"
 	tea "github.com/charmbracelet/bubbletea"

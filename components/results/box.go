@@ -3,9 +3,9 @@ package results
 import (
 	"fmt"
 
-	"speedtestui/app"
-	"speedtestui/components/config"
 	"strings"
+	"taskman/app"
+	"taskman/components/config"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
