@@ -35,7 +35,6 @@ type row struct {
 }
 
 // ----- model -----
-
 type model struct {
 	store   *app.Store
 	rows    []row
@@ -53,11 +52,13 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
+		m.rebuildRows()
+
 	case app.TaskFormResultMsg:
 		if msg.Result {
 			// add new task
 			if strings.TrimSpace(msg.Title) != "" {
-				if _, err := m.store.Add(msg.Title, "", nil); err != nil {
+				if _, err := m.store.Add(msg.Title, msg.Notes, nil); err != nil {
 					m.err = err
 				}
 				m.rebuildRows()
@@ -110,16 +111,26 @@ var (
 	doneStyle     = lipgloss.NewStyle().Faint(true).Strikethrough(true)
 	titleStyle    = lipgloss.NewStyle().Bold(true)
 	notesStyle    = lipgloss.NewStyle().Italic(true).Foreground(config.COLOR_LIGHTER)
-	cursorGlyph   = "› " // looks nice; change to "> " if you prefer
-	indent        = "  "
+	dateStyle     = lipgloss.NewStyle().Foreground(config.COLOR_LIGHTER)
+	emptyStyle    = lipgloss.NewStyle().Foreground(config.COLOR_LIGHTER).Italic(true)
+	cursorGlyph   = " › " // looks nice; change to "> " if you prefer
+	indent        = "   "
 )
 
 func (m model) View() string {
 	var b strings.Builder
+
+	b.WriteString(config.TopHeaderStyle.Render("TODAY'S TASKS"))
+
 	for i, r := range m.rows {
 		switch r.kind {
 		case rowHeader:
 			b.WriteString(headerStyle.Render(r.label) + "\n")
+			// if no items in this section, show a hint
+			if i+1 >= len(m.rows) || m.rows[i+1].kind != rowItem {
+				b.WriteString(emptyStyle.Render("  (no items, press 'a' to add)") + "\n")
+			}
+
 		case rowItem:
 			line := r.label
 			// style completed items
@@ -159,11 +170,11 @@ func (m *model) rebuildRows() {
 	var rows []row
 	rows = append(rows, row{kind: rowHeader, label: fmt.Sprintf(" TODO (%d)", len(todos))})
 	for _, t := range todos {
-		rows = append(rows, row{kind: rowItem, id: t.ID, label: taskLine(t)})
+		rows = append(rows, row{kind: rowItem, id: t.ID, label: m.taskLine(t)})
 	}
 	rows = append(rows, row{kind: rowHeader, label: fmt.Sprintf(" Completed (%d)", len(dones))})
 	for _, t := range dones {
-		rows = append(rows, row{kind: rowItem, id: t.ID, label: taskLine(t)})
+		rows = append(rows, row{kind: rowItem, id: t.ID, label: m.taskLine(t)})
 	}
 	m.rows = rows
 	// clamp cursor
@@ -175,20 +186,34 @@ func (m *model) rebuildRows() {
 		m.cursor = m.nextSelectable(m.cursor, +1)
 	}
 }
-func taskLine(t *app.Task) string {
-	var parts []string
+func (m *model) taskLine(t *app.Task) string {
 	completed := t.IsCompleted() && t.CompletedAt != nil
-	parts = append(parts, titleStyle.Render(t.Title))
-	if t.Due != nil && !t.IsCompleted() {
-		parts = append(parts, "• due "+t.Due.Format("2006-01-02"))
-	}
+	title := t.Title
+	date := dateStyle.Render(t.CreatedAt.Format("2006-01-02 15:04"))
+
 	if completed {
-		parts = append(parts, "• done "+t.CompletedAt.Format("2006-01-02 15:04"))
+		date = t.CompletedAt.Format("2006-01-02 15:05")
+	} else {
+		title = titleStyle.Render(t.Title)
 	}
-	if strings.TrimSpace(t.Notes) != "" {
-		parts = append(parts, "— "+notesStyle.Render(t.Notes))
+
+	// if t.Due != nil && !t.IsCompleted() {
+	// 	parts = append(parts, "• due "+t.Due.Format("2006-01-02"))
+	// }
+	// if completed {
+	// 	parts = append(parts, "• done "+t.CompletedAt.Format("2006-01-02 15:04"))
+	// }
+	// if strings.TrimSpace(t.Notes) != "" {
+	// 	parts = append(parts, "— "+notesStyle.Render(t.Notes))
+	// }
+
+	padding := m.width - lipgloss.Width(title) - lipgloss.Width(date) - 3 - len(indent)
+	if padding < 1 {
+		padding = 1
 	}
-	return strings.Join(parts, " ")
+	return title + lipgloss.NewStyle().PaddingLeft(padding).Render(date)
+
+	// return strings.Join(parts, " ")
 }
 func (m *model) nextSelectable(start, dir int) int {
 	i := start + dir

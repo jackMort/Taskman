@@ -6,6 +6,7 @@ import (
 	"speedtestui/components/overlay"
 	"speedtestui/utils"
 
+	"github.com/charmbracelet/bubbles/textarea"
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
@@ -23,58 +24,49 @@ var (
 
 const (
 	TITLE_IDX = iota
+	TEXTAREA_IDX
 	CLOSE_IDX
 	SAVE_IDX
 )
 
 type TaskForm struct {
-	inputs   []textinput.Model
-	focused  int
-	save     bool
-	errors   []string
-	bgRaw    string
-	width    int
-	startRow int
-	startCol int
+	titleInput textinput.Model
+	notesInput textarea.Model
+	focused    int
+	save       bool
+	errors     []string
+	bgRaw      string
+	width      int
+	startRow   int
+	startCol   int
 }
 
 func NewTaskForm(bgRaw string, width int, vWidth int) TaskForm {
-	var inputs []textinput.Model = make([]textinput.Model, 1)
 
-	inputs[TITLE_IDX] = textinput.New()
-	inputs[TITLE_IDX].Placeholder = "Title"
-	inputs[TITLE_IDX].Prompt = "󱞩 "
-	// inputs[COLLECTION_IDX].ShowSuggestions = true
-	// inputs[COLLECTION_IDX].KeyMap.AcceptSuggestion = key.NewBinding(
-	// 	key.WithKeys("enter"),
-	// )
+	titleInput := textinput.New()
+	titleInput.Placeholder = "Title"
+	titleInput.Prompt = "󱞩 "
 
-	// if app.GetInstance().SelectedCollection != nil {
-	// 	inputs[COLLECTION_IDX].SetValue(app.GetInstance().SelectedCollection.Name)
-	// }
-
-	// collections := app.GetInstance().Collections
-	// suggestions := make([]string, len(collections))
-	// for i, c := range collections {
-	// 	suggestions[i] = c.Name
-	// }
-	// inputs[COLLECTION_IDX].SetSuggestions(suggestions)
+	textArea := textarea.New()
+	textArea.ShowLineNumbers = false
 
 	return TaskForm{
-		bgRaw:    bgRaw,
-		startRow: 3,
-		width:    width,
-		startCol: vWidth - width - 4,
-		inputs:   inputs,
-		focused:  TITLE_IDX,
+		bgRaw:      bgRaw,
+		startRow:   3,
+		width:      width,
+		startCol:   vWidth - width - 4,
+		titleInput: titleInput,
+		notesInput: textArea,
+		focused:    TITLE_IDX,
 	}
 }
+
 func (c TaskForm) Title() string {
-	return c.inputs[TITLE_IDX].Value()
+	return c.titleInput.Value()
 }
 
-func (c TaskForm) SetTitle(title string) {
-	c.inputs[TITLE_IDX].SetValue(title)
+func (c TaskForm) Notes() string {
+	return c.notesInput.Value()
 }
 
 // Init initializes the popup.
@@ -84,7 +76,7 @@ func (c TaskForm) Init() tea.Cmd {
 
 // nextInput focuses the next input field
 func (c *TaskForm) nextInput() {
-	c.focused = (c.focused + 1) % (len(c.inputs) + 2)
+	c.focused = (c.focused + 1) % 4
 }
 
 // prevInput focuses the previous input field
@@ -92,13 +84,13 @@ func (c *TaskForm) prevInput() {
 	c.focused--
 	// Wrap around
 	if c.focused < 0 {
-		c.focused = len(c.inputs) + 1
+		c.focused = 4
 	}
 }
 
 // Update handles messages.
 func (c TaskForm) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	var cmds []tea.Cmd = make([]tea.Cmd, len(c.inputs))
+	var cmds []tea.Cmd = make([]tea.Cmd, 2)
 
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
@@ -117,16 +109,16 @@ func (c TaskForm) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case tea.KeyTab, tea.KeyCtrlJ:
 			c.nextInput()
 		}
-		for i := range c.inputs {
-			c.inputs[i].Blur()
-		}
-		if c.focused < len(c.inputs) {
-			c.inputs[c.focused].Focus()
-		}
-	}
 
-	for i := range c.inputs {
-		c.inputs[i], cmds[i] = c.inputs[i].Update(msg)
+		c.titleInput.Blur()
+		c.notesInput.Blur()
+		if c.focused == TITLE_IDX {
+			c.titleInput.Focus()
+			c.titleInput, cmds[0] = c.titleInput.Update(msg)
+		} else if c.focused == TEXTAREA_IDX {
+			c.notesInput.Focus()
+			c.notesInput, cmds[0] = c.notesInput.Update(msg)
+		}
 	}
 
 	c.Validate()
@@ -136,7 +128,7 @@ func (c TaskForm) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (c *TaskForm) Validate() {
 	c.errors = make([]string, 0)
-	if c.inputs[TITLE_IDX].Value() == "" {
+	if c.Title() == "" {
 		c.errors = append(c.errors, "Title is required")
 	}
 }
@@ -164,8 +156,11 @@ func (c TaskForm) View() string {
 
 	inputs := lipgloss.JoinVertical(
 		lipgloss.Left,
-		config.LabelStyle.Width(30).Render("Task Title:"),
-		config.InputStyle.Render(c.inputs[TITLE_IDX].View()),
+		config.LabelStyle.Width(30).Render("Title:"),
+		config.InputStyle.Render(c.titleInput.View()),
+		" ",
+		config.LabelStyle.Width(30).Render("Notes:"),
+		config.InputStyle.Render(c.notesInput.View()),
 		" ",
 		utils.RenderErrors(c.errors),
 		buttons,
@@ -182,6 +177,7 @@ func (c TaskForm) makeChoice() tea.Cmd {
 		return app.TaskFormResultMsg{
 			Result: c.save,
 			Title:  c.Title(),
+			Notes:  c.Notes(),
 		}
 	}
 }

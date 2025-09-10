@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"speedtestui/components/calendar"
 	"speedtestui/components/config"
 	"speedtestui/components/footer"
 	"speedtestui/components/results"
@@ -46,6 +47,7 @@ Restman is a CLI tool for RESTful API.`,
 
 		footerBox := footer.New()
 		resultsBox := results.New()
+		calendarBox := calendar.New()
 
 		// layout-tree defintion
 		m := Model{tui: boxer.Boxer{}}
@@ -58,8 +60,23 @@ Restman is a CLI tool for RESTful API.`,
 				1,
 			}
 		}
-		rootNode.Children = []boxer.Node{
+
+		centerNode := boxer.CreateNoBorderNode()
+		centerNode.VerticalStacked = false
+		centerNode.SizeFunc = func(node boxer.Node, widthOrHeight int) []int {
+			return []int{
+				widthOrHeight - 30,
+				30,
+			}
+		}
+
+		centerNode.Children = []boxer.Node{
 			stripErr(m.tui.CreateLeaf("results", resultsBox)),
+			stripErr(m.tui.CreateLeaf("calendar", calendarBox)),
+		}
+
+		rootNode.Children = []boxer.Node{
+			centerNode,
 			stripErr(m.tui.CreateLeaf("footer", footerBox)),
 		}
 

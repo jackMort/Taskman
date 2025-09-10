@@ -15,6 +15,7 @@ import (
 type TaskFormResultMsg struct {
 	Result bool
 	Title  string
+	Notes  string
 }
 
 // Task represents a single to-do item.

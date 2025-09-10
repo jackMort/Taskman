@@ -60,15 +60,6 @@ var EmptyMessageStyle = lipgloss.NewStyle().
 	Padding(2, 0).
 	Foreground(COLOR_GRAY)
 
-var MethodStyleShort = lipgloss.NewStyle().
-	Bold(false)
-
-var MethodStyle = lipgloss.NewStyle().
-	Bold(true).
-	Foreground(COLOR_FOREGROUND).
-	Background(COLOR_HIGHLIGHT).
-	Padding(0, 1)
-
 var FullscreenStyle = lipgloss.NewStyle().
 	Border(lipgloss.NormalBorder()).
 	BorderForeground(COLOR_HIGHLIGHT).
@@ -92,21 +83,11 @@ var InputStyle = lipgloss.NewStyle().
 var LabelStyle = lipgloss.NewStyle().
 	Foreground(COLOR_LIGHTER)
 
-var Methods = map[string]string{
-	"GET":    MethodStyle.Background(lipgloss.Color(methodColors["GET"])).Render("GET"),
-	"POST":   MethodStyle.Background(lipgloss.Color(methodColors["POST"])).Render("POST"),
-	"PUT":    MethodStyle.Background(lipgloss.Color(methodColors["PUT"])).Render("PUT"),
-	"DELETE": MethodStyle.Background(lipgloss.Color(methodColors["DELETE"])).Render("DELETE"),
-	"PATCH":  MethodStyle.Background(lipgloss.Color(methodColors["PATCH"])).Render("PATCH"),
-}
-
-var MethodsShort = map[string]string{
-	"GET":    MethodStyleShort.Foreground(lipgloss.Color(methodColors["GET"])).Render("GET"),
-	"POST":   MethodStyleShort.Foreground(lipgloss.Color(methodColors["POST"])).Render("POS"),
-	"PUT":    MethodStyleShort.Foreground(lipgloss.Color(methodColors["PUT"])).Render("PUT"),
-	"DELETE": MethodStyleShort.Foreground(lipgloss.Color(methodColors["DELETE"])).Render("DEL"),
-	"PATCH":  MethodStyleShort.Foreground(lipgloss.Color(methodColors["PATCH"])).Render("PAT"),
-}
+var TopHeaderStyle = lipgloss.NewStyle().
+	Padding(1, 2).
+	Foreground(COLOR_HIGHLIGHT).
+	Bold(true).
+	Underline(true)
 
 type WindowFocusedMsg struct {
 	State bool

@@ -1,8 +1,8 @@
 module speedtestui
 
-go 1.21
+go 1.21.1
 
-toolchain go1.21.3
+toolchain go1.24.6
 
 require (
 	github.com/TylerBrock/colorjson v0.0.0-20200706003622-8a50f05110d2
@@ -26,6 +26,7 @@ require (
 	github.com/charmbracelet/x/ansi v0.4.0 // indirect
 	github.com/charmbracelet/x/term v0.2.0 // indirect
 	github.com/erikgeiser/coninput v0.0.0-20211004153227-1c3628e74d0f // indirect
+	github.com/ethanefung/bubble-datepicker v0.1.0 // indirect
 	github.com/fatih/color v1.16.0 // indirect
 	github.com/fsnotify/fsnotify v1.7.0 // indirect
 	github.com/getkin/kin-openapi v0.128.0 // indirect

@@ -96,7 +96,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 			case "a":
 				if m.popup == nil {
-					f := form.NewTaskForm(m.GetFadedView(), 40, m.tui.LayoutTree.GetWidth())
+					f := form.NewTaskForm(m.GetFadedView(), m.width-4, m.tui.LayoutTree.GetWidth())
 					m.popup = f
 
 					return m, m.popup.Init()
