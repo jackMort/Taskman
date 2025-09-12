@@ -2,6 +2,7 @@ package results
 
 import (
 	"fmt"
+	"sort"
 	"time"
 
 	"strings"
@@ -116,6 +117,7 @@ var (
 	itemStyle     = lipgloss.NewStyle()
 	selectedStyle = lipgloss.NewStyle().Background(config.COLOR_HIGHLIGHT).Foreground(config.COLOR_FOREGROUND).Bold(true)
 	doneStyle     = lipgloss.NewStyle().Faint(true).Strikethrough(true)
+	overdueStyle  = lipgloss.NewStyle().Foreground(config.COLOR_ERROR).Bold(true)
 	titleStyle    = lipgloss.NewStyle().Bold(true)
 	notesStyle    = lipgloss.NewStyle().Italic(true).Foreground(config.COLOR_LIGHTER)
 	dateStyle     = lipgloss.NewStyle().Foreground(config.COLOR_LIGHTER)
@@ -172,6 +174,49 @@ func (m model) View() string {
 func (m *model) rebuildRows() {
 	todos := []*app.Task{}
 	dones := []*app.Task{}
+	overdue := []*app.Task{}
+
+	// Check if we're viewing today's tasks
+	isToday := m.day.IsZero() || (m.day.Year() == time.Now().Year() && m.day.YearDay() == time.Now().YearDay())
+
+	if isToday {
+		// Get all tasks to find overdue ones and completed overdue tasks
+		allTasks := m.store.List()
+		today := time.Now().Truncate(24 * time.Hour)
+		for _, t := range allTasks {
+			if !t.IsCompleted() {
+				// Incomplete overdue tasks
+				taskDate := t.Date.Truncate(24 * time.Hour)
+				if taskDate.Before(today) {
+					overdue = append(overdue, t)
+				}
+			} else if t.CompletedAt != nil {
+				// Completed tasks from past dates that were completed today
+				completedDate := t.CompletedAt.Truncate(24 * time.Hour)
+				taskDate := t.Date.Truncate(24 * time.Hour)
+				if completedDate.Equal(today) && taskDate.Before(today) {
+					dones = append(dones, t)
+				}
+			}
+		}
+
+		// Sort overdue tasks by due date (nil due goes last), then by ID
+		sort.SliceStable(overdue, func(i, j int) bool {
+			a, b := overdue[i], overdue[j]
+			if a.Due == nil && b.Due != nil {
+				return false
+			}
+			if a.Due != nil && b.Due == nil {
+				return true
+			}
+			if a.Due != nil && b.Due != nil && !a.Due.Equal(*b.Due) {
+				return a.Due.Before(*b.Due)
+			}
+			return a.ID < b.ID
+		})
+	}
+
+	// Get tasks for the current day
 	for _, t := range m.store.ListByDate(m.day) {
 		if t.IsCompleted() {
 			dones = append(dones, t)
@@ -179,7 +224,26 @@ func (m *model) rebuildRows() {
 			todos = append(todos, t)
 		}
 	}
+
+	// Sort completed tasks by completion time (newest first), then by ID
+	sort.SliceStable(dones, func(i, j int) bool {
+		a, b := dones[i], dones[j]
+		if a.CompletedAt != nil && b.CompletedAt != nil && !a.CompletedAt.Equal(*b.CompletedAt) {
+			return b.CompletedAt.Before(*a.CompletedAt) // newest first
+		}
+		return a.ID < b.ID
+	})
+
 	var rows []row
+
+	// Add overdue section if viewing today and there are overdue tasks
+	if isToday && len(overdue) > 0 {
+		rows = append(rows, row{kind: rowHeader, label: fmt.Sprintf(" OVERDUE (%d)", len(overdue))})
+		for _, t := range overdue {
+			rows = append(rows, row{kind: rowItem, id: t.ID, label: m.taskLineWithOverdue(t, true)})
+		}
+	}
+
 	rows = append(rows, row{kind: rowHeader, label: fmt.Sprintf(" TODO (%d)", len(todos))})
 	for _, t := range todos {
 		rows = append(rows, row{kind: rowItem, id: t.ID, label: m.taskLine(t)})
@@ -199,33 +263,48 @@ func (m *model) rebuildRows() {
 	}
 }
 func (m *model) taskLine(t *app.Task) string {
+	return m.taskLineWithOverdue(t, false)
+}
+
+func (m *model) taskLineWithOverdue(t *app.Task, isOverdue bool) string {
 	completed := t.IsCompleted() && t.CompletedAt != nil
 	title := t.Title
-	date := dateStyle.Render(t.CreatedAt.Format("2006-01-02 15:04"))
+	var date string
 
-	if completed {
+	if isOverdue {
+		// For overdue tasks, show due date and days overdue
+		if t.Due != nil {
+			daysOverdue := int(time.Since(*t.Due).Hours() / 24)
+			if daysOverdue == 0 {
+				date = fmt.Sprintf("Due today (%s)", t.Due.Format("2006-01-02"))
+			} else if daysOverdue == 1 {
+				date = fmt.Sprintf("1 day overdue (%s)", t.Due.Format("2006-01-02"))
+			} else {
+				date = fmt.Sprintf("%d days overdue (%s)", daysOverdue, t.Due.Format("2006-01-02"))
+			}
+		} else {
+			// If no due date, show the task date as overdue
+			daysOverdue := int(time.Since(t.Date).Hours() / 24)
+			if daysOverdue == 1 {
+				date = fmt.Sprintf("1 day overdue (%s)", t.Date.Format("2006-01-02"))
+			} else {
+				date = fmt.Sprintf("%d days overdue (%s)", daysOverdue, t.Date.Format("2006-01-02"))
+			}
+		}
+		title = overdueStyle.Render(t.Title)
+	} else if completed {
 		date = t.CompletedAt.Format("2006-01-02 15:05")
+		title = titleStyle.Render(t.Title)
 	} else {
+		date = dateStyle.Render(t.CreatedAt.Format("2006-01-02 15:04"))
 		title = titleStyle.Render(t.Title)
 	}
-
-	// if t.Due != nil && !t.IsCompleted() {
-	// 	parts = append(parts, "• due "+t.Due.Format("2006-01-02"))
-	// }
-	// if completed {
-	// 	parts = append(parts, "• done "+t.CompletedAt.Format("2006-01-02 15:04"))
-	// }
-	// if strings.TrimSpace(t.Notes) != "" {
-	// 	parts = append(parts, "— "+notesStyle.Render(t.Notes))
-	// }
 
 	padding := m.width - lipgloss.Width(title) - lipgloss.Width(date) - 3 - len(indent)
 	if padding < 1 {
 		padding = 1
 	}
 	return title + lipgloss.NewStyle().PaddingLeft(padding).Render(date)
-
-	// return strings.Join(parts, " ")
 }
 func (m *model) nextSelectable(start, dir int) int {
 	i := start + dir
