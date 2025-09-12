@@ -2,6 +2,7 @@ package results
 
 import (
 	"fmt"
+	"time"
 
 	"strings"
 	"taskman/app"
@@ -36,6 +37,7 @@ type row struct {
 
 // ----- model -----
 type model struct {
+	day     time.Time
 	store   *app.Store
 	rows    []row
 	cursor  int // index in rows (can land on headers; movement skips them)
@@ -54,11 +56,16 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.height = msg.Height
 		m.rebuildRows()
 
+	case app.DaySelectedMsg:
+		m.day = msg.Day
+		m.cursor = 0
+		m.rebuildRows()
+
 	case app.TaskFormResultMsg:
 		if msg.Result {
 			// add new task
 			if strings.TrimSpace(msg.Title) != "" {
-				if _, err := m.store.Add(msg.Title, msg.Notes, nil); err != nil {
+				if _, err := m.store.Add(msg.Title, msg.Notes, nil, m.day); err != nil {
 					m.err = err
 				}
 				m.rebuildRows()
@@ -120,7 +127,12 @@ var (
 func (m model) View() string {
 	var b strings.Builder
 
-	b.WriteString(config.TopHeaderStyle.Render("TODAY'S TASKS"))
+	isToday := m.day.IsZero() || (m.day.Year() == time.Now().Year() && m.day.YearDay() == time.Now().YearDay())
+	if isToday {
+		b.WriteString(config.TopHeaderStyle.Render("TODAY'S TASKS"))
+	} else {
+		b.WriteString(config.TopHeaderStyle.Render(m.day.Format("Monday, January 2") + " TASKS"))
+	}
 
 	for i, r := range m.rows {
 		switch r.kind {
@@ -160,7 +172,7 @@ func (m model) View() string {
 func (m *model) rebuildRows() {
 	todos := []*app.Task{}
 	dones := []*app.Task{}
-	for _, t := range m.store.List() {
+	for _, t := range m.store.ListByDate(m.day) {
 		if t.IsCompleted() {
 			dones = append(dones, t)
 		} else {
@@ -265,7 +277,6 @@ func New() *model {
 	if err != nil {
 		panic(err)
 	}
-	println("Loaded store with", len(store.List()), "tasks")
 	m := &model{
 		store: store,
 	}

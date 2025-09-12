@@ -6,6 +6,7 @@ import (
 	"taskman/components/form"
 	"taskman/components/popup"
 	"taskman/utils"
+	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
@@ -41,24 +42,19 @@ func stripErr(n boxer.Node, _ error) boxer.Node {
 }
 
 func main() {
-	rootCmd.Flags().StringP("url", "u", "", "Url")
-	rootCmd.Flags().StringP("data", "d", "", "Data")
-	rootCmd.Flags().StringP("data-raw", "", "", "Data Raw")
-	rootCmd.Flags().StringP("request", "X", "GET", "HTTP method")
-	rootCmd.Flags().StringArrayP("header", "H", []string{}, "HTTP header")
-
 	rootCmd.Execute()
 }
 
 type Model struct {
 	tui    boxer.Boxer
 	popup  tea.Model
+	day    time.Time
 	width  int
 	height int
 }
 
 func (m Model) Init() tea.Cmd {
-	return nil
+	return app.Today()
 }
 
 func (m Model) GetFadedView() string {
@@ -82,6 +78,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case app.TaskFormResultMsg:
 		m.popup = nil
 
+	case app.DaySelectedMsg:
+		m.day = msg.Day
+
 	case tea.KeyMsg:
 		{
 			switch msg.String() {
@@ -100,6 +99,16 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.popup = f
 
 					return m, m.popup.Init()
+				}
+
+			case "]":
+				if m.popup == nil {
+					return m, app.NextDay(m.day)
+				}
+
+			case "[":
+				if m.popup == nil {
+					return m, app.PrevDay(m.day)
 				}
 
 			}

@@ -3,6 +3,7 @@ package calendar
 import (
 	"time"
 
+	"taskman/app"
 	"taskman/components/config"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -21,6 +22,7 @@ var completedStyle = lipgloss.NewStyle().Strikethrough(true).Foreground(config.C
 var taskContainerStyle = lipgloss.NewStyle().Padding(0, 2)
 
 type model struct {
+	day    time.Time
 	dp     datepicker.Model
 	width  int
 	height int
@@ -31,9 +33,15 @@ func (m model) Init() tea.Cmd { return nil }
 
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
+
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
+
+	case app.DaySelectedMsg:
+		m.day = msg.Day
+		m.dp.SetTime(m.day)
+
 	}
 	return m, nil
 }

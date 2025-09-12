@@ -10,6 +10,8 @@ import (
 	"sort"
 	"sync"
 	"time"
+
+	tea "github.com/charmbracelet/bubbletea"
 )
 
 type TaskFormResultMsg struct {
@@ -18,9 +20,14 @@ type TaskFormResultMsg struct {
 	Notes  string
 }
 
+type DaySelectedMsg struct {
+	Day time.Time
+}
+
 // Task represents a single to-do item.
 type Task struct {
 	ID          int        `json:"id"`
+	Date        time.Time  `json:"date"`
 	Title       string     `json:"title"`
 	Notes       string     `json:"notes,omitempty"`
 	Due         *time.Time `json:"due,omitempty"`
@@ -177,8 +184,50 @@ func (s *Store) List() []*Task {
 	return out
 }
 
+func (s *Store) ListByDate(date time.Time) []*Task {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	var out []*Task
+	for _, t := range s.tasks {
+		if t.Date.Year() == date.Year() && t.Date.Month() == date.Month() && t.Date.Day() == date.Day() {
+			out = append(out, t)
+		}
+	}
+
+	sort.SliceStable(out, func(i, j int) bool {
+		a, b := out[i], out[j]
+
+		// Incomplete before complete
+		if a.IsCompleted() != b.IsCompleted() {
+			return !a.IsCompleted()
+		}
+
+		// If both incomplete: sort by due date (nil last), then ID
+		if !a.IsCompleted() {
+			if a.Due == nil && b.Due != nil {
+				return false
+			}
+			if a.Due != nil && b.Due == nil {
+				return true
+			}
+			if a.Due != nil && b.Due != nil && !a.Due.Equal(*b.Due) {
+				return a.Due.Before(*b.Due)
+			}
+			return a.ID < b.ID
+		}
+
+		// If both complete: newest completion first
+		if a.CompletedAt != nil && b.CompletedAt != nil && !a.CompletedAt.Equal(*b.CompletedAt) {
+			return b.CompletedAt.Before(*a.CompletedAt)
+		}
+		return a.ID < b.ID
+	})
+	return out
+}
+
 // Add creates a new task and saves it to disk.
-func (s *Store) Add(title, notes string, due *time.Time) (*Task, error) {
+func (s *Store) Add(title, notes string, due *time.Time, date time.Time) (*Task, error) {
 	if title == "" {
 		return nil, ErrTitleRequired
 	}
@@ -187,6 +236,7 @@ func (s *Store) Add(title, notes string, due *time.Time) (*Task, error) {
 	s.mu.Lock()
 	t := &Task{
 		ID:        s.NextID,
+		Date:      date,
 		Title:     title,
 		Notes:     notes,
 		Due:       cloneTimePtr(due),
@@ -406,4 +456,28 @@ func cloneTimePtr(t *time.Time) *time.Time {
 	}
 	cp := *t
 	return &cp
+}
+
+func NextDay(t time.Time) tea.Cmd {
+	return func() tea.Msg {
+		return DaySelectedMsg{
+			Day: t.AddDate(0, 0, 1),
+		}
+	}
+}
+
+func PrevDay(t time.Time) tea.Cmd {
+	return func() tea.Msg {
+		return DaySelectedMsg{
+			Day: t.AddDate(0, 0, -1),
+		}
+	}
+}
+
+func Today() tea.Cmd {
+	return func() tea.Msg {
+		return DaySelectedMsg{
+			Day: time.Now(),
+		}
+	}
 }

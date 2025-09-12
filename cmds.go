@@ -19,13 +19,14 @@ import (
 var version = "dev"
 
 var rootCmd = &cobra.Command{
-	Use:   "restman [http://example.com/api/v1]",
-	Short: "A CLI tool for RESTful API",
+	Use:   "taskman",
+	Short: "A CLI tool for Task Management",
 	Long: `
-┏┓┏┓┏╋┏┳┓┏┓┏┓
-┛ ┗ ┛┗┛┗┗┗┻┛┗
+░▀█▀░█▀█░█▀▀░█░█░█▄█░█▀█░█▀█
+░░█░░█▀█░▀▀█░█▀▄░█░█░█▀█░█░█
+░░▀░░▀░▀░▀▀▀░▀░▀░▀░▀░▀░▀░▀░▀
 
-Restman is a CLI tool for RESTful API.`,
+Taskman is a CLI tool for Task API.`,
 	Version: version,
 	Run: func(cmd *cobra.Command, args []string) {
 		config.SetVersion(version)
