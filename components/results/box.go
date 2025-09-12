@@ -8,6 +8,7 @@ import (
 	"strings"
 	"taskman/app"
 	"taskman/components/config"
+	"taskman/components/popup"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
@@ -38,19 +39,35 @@ type row struct {
 
 // ----- model -----
 type model struct {
-	day     time.Time
-	store   *app.Store
-	rows    []row
-	cursor  int // index in rows (can land on headers; movement skips them)
-	width   int
-	height  int
-	err     error
-	loading bool
+	day           time.Time
+	store         *app.Store
+	rows          []row
+	cursor        int // index in rows (can land on headers; movement skips them)
+	width         int
+	height        int
+	err           error
+	loading       bool
+	pendingDelete *int // ID of task pending deletion, nil if no pending delete
+	popup         tea.Model
 }
 
 func (m model) Init() tea.Cmd { return nil }
 
+func (m model) getFadedView() string {
+	return lipgloss.NewStyle().Foreground(config.COLOR_SUBTLE).Render(m.View())
+}
+
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	// Handle ChoiceResultMsg from popup first, regardless of popup state
+	if _, ok := msg.(popup.ChoiceResultMsg); ok {
+		// This is a result from the popup, handle it in the results model
+	} else if m.popup != nil {
+		// If there's a popup and it's not a ChoiceResultMsg, let the popup handle it
+		var cmd tea.Cmd
+		m.popup, cmd = m.popup.Update(msg)
+		return m, cmd
+	}
+
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
@@ -77,6 +94,22 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 			}
 		}
+
+	case popup.ChoiceResultMsg:
+		if msg.ID == "delete" && m.pendingDelete != nil {
+			if msg.Result {
+				// User confirmed deletion
+				if err := m.store.Delete(*m.pendingDelete); err != nil {
+					m.err = err
+				}
+				// move cursor up first so it feels natural
+				m.cursor = m.nextSelectable(m.cursor, -1)
+				m.rebuildRows()
+			}
+			m.pendingDelete = nil
+		}
+		m.popup = nil
+
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "up", "k":
@@ -100,15 +133,18 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "d":
 			if m.rows[m.cursor].kind == rowItem {
 				id := m.rows[m.cursor].id
-				if err := m.store.Delete(id); err != nil {
-					m.err = err
+				m.pendingDelete = &id
+				// Get task title for better confirmation message
+				taskTitle := "this task"
+				if task, err := m.store.Get(id); err == nil {
+					taskTitle = fmt.Sprintf("\"%s\"", task.Title)
 				}
-				// move cursor up first so it feels natural
-				m.cursor = m.nextSelectable(m.cursor, -1)
-				m.rebuildRows()
+				question := fmt.Sprintf("Are you sure you want to delete %s?", taskTitle)
+				m.popup = popup.NewChoice("delete", m.getFadedView(), m.width, question, false)
 			}
 		}
 	}
+
 	return m, nil
 }
 
@@ -127,6 +163,10 @@ var (
 )
 
 func (m model) View() string {
+	if m.popup != nil {
+		return m.popup.View()
+	}
+
 	var b strings.Builder
 
 	isToday := m.day.IsZero() || (m.day.Year() == time.Now().Year() && m.day.YearDay() == time.Now().YearDay())

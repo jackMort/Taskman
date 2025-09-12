@@ -8,10 +8,12 @@ import (
 // ChoiceResultMsg is the message sent when a choice is made.
 type ChoiceResultMsg struct {
 	Result bool
+	ID     string
 }
 
 // Choice is a popup that presents a yes/no choice to the user.
 type Choice struct {
+	id       string
 	style    style
 	question string
 	overlay  Overlay
@@ -19,7 +21,7 @@ type Choice struct {
 }
 
 // NewChoice creates a new Choice popup.
-func NewChoice(bgRaw string, width int, question string, defaultChoice bool) Choice {
+func NewChoice(id string, bgRaw string, width int, question string, defaultChoice bool) Choice {
 	optWidth := len(question) + 16
 	if optWidth > width {
 		optWidth = width
@@ -28,11 +30,16 @@ func NewChoice(bgRaw string, width int, question string, defaultChoice bool) Cho
 	height := 7
 
 	return Choice{
+		id:       id,
 		style:    newStyle(optWidth, height),
 		overlay:  NewOverlay(bgRaw, optWidth, height),
 		question: question,
 		selected: defaultChoice,
 	}
+}
+
+func (c Choice) ID() string {
+	return c.id
 }
 
 // Init initializes the popup.
@@ -85,5 +92,5 @@ func (c Choice) View() string {
 
 // makeChoice returns a tea.Cmd that tells the parent model about the choice.
 func (c Choice) makeChoice() tea.Cmd {
-	return func() tea.Msg { return ChoiceResultMsg{c.selected} }
+	return func() tea.Msg { return ChoiceResultMsg{Result: c.selected, ID: c.id} }
 }

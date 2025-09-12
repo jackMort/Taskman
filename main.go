@@ -67,13 +67,16 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	switch msg := msg.(type) {
 
-	// Handle popup messages
+	// Handle popup messages (only for main model's popup)
 	case popup.ChoiceResultMsg:
-		// If the user chose "yes", quit the program.
-		if msg.Result {
-			return m, tea.Quit
+		if msg.ID == "exit" {
+			// If the user chose "yes", quit the program.
+			if msg.Result {
+				return m, tea.Quit
+			}
+			m.popup = nil
+			return m, nil
 		}
-		m.popup = nil
 
 	case app.TaskFormResultMsg:
 		m.popup = nil
@@ -90,7 +93,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 
 				width := 100
-				m.popup = popup.NewChoice(m.GetFadedView(), width, "Are you sure, you want to quit?", false)
+				m.popup = popup.NewChoice("exit", m.GetFadedView(), width, "Are you sure, you want to quit?", false)
 				return m, m.popup.Init()
 
 			case "a":

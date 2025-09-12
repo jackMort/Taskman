@@ -24,6 +24,15 @@ type DaySelectedMsg struct {
 	Day time.Time
 }
 
+type DeleteConfirmationMsg struct {
+	Confirmed bool
+	TaskID    int
+}
+
+type DeleteRequestMsg struct {
+	TaskID int
+}
+
 // Task represents a single to-do item.
 type Task struct {
 	ID          int        `json:"id"`
